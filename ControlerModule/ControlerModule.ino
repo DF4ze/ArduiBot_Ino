@@ -1,9 +1,10 @@
 
-#include <RCSwitch.h>
+#include <myRCSwitch.h>
 
 #define PIN_RECEIVE 0
 #define PIN_TRANSMIT 8
 
+// max 4 294 967 295
 // lo
 #define HELLOIAMCTRL 	10
 //lu
@@ -23,8 +24,8 @@
 
 #define UNSUCESSTRY 	5
 
-RCSwitch mySwitchRec = RCSwitch();
-RCSwitch mySwitchTra = RCSwitch();
+myRCSwitch mySwitchRec = myRCSwitch();
+myRCSwitch mySwitchTra = myRCSwitch();
 
 bool bConnected = false;
 bool bMayBeLost = false;
@@ -59,10 +60,10 @@ void loop() {
 
   ////////////////////////
   /// Partie réception
-  int iReceived = -1;
+  unsigned long iReceived = 0;
   if (mySwitchRec.available()) {
     
-    int value = mySwitchRec.getReceivedValue();
+    unsigned long value = mySwitchRec.getReceivedValue();
     
     if (value == 0) {
       Serial.print("[Unknown encoding]");
@@ -79,7 +80,7 @@ void loop() {
   
   ////////////////////////
   /// Partie envoi
-	int iTransmit = -1;
+	unsigned long iTransmit = 0;
 	//////// Partie CONTROLER
 	if( iReceived != HELLOIAMCTRL && iReceived != AREUOK && iReceived != STILLHERE ){
 		if( !bConnected ){
