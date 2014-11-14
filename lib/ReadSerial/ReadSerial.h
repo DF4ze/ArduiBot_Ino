@@ -21,14 +21,20 @@ class ReadSerial{
     ReadSerial();
 	
 	void setDelim( char aChar );
-	void putAvailable( char aChar );
+	bool putAvailable( char aChar );
 	bool isStringComplete( );
 	String getInputString();
+	void setBuffSize( int iSize );
 	
 private:	
+	String pullString();
+
 	String inputString;
+	String buffStrings[10];
+	int buffSize;
 	bool stringComplete;
 	char cDelim;
+	int iWriteIndex;
 	
 	bool bDebug;
 };

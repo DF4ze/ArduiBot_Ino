@@ -1,4 +1,4 @@
-#include <ConnectoRF.h>
+#include <CommunicatoRF.h>
 
 
 #define PIN_RECEIVE 0
@@ -9,7 +9,7 @@ bool bDebug = true;
 
 int iLastStatus = 0;
 unsigned long lastReceived = 0;
-ConnectoRF crfSlave = ConnectoRF( );
+CommunicatoRF crfSlave = CommunicatoRF( );
 
 
 void setup() {

@@ -1,0 +1,28 @@
+#######################################
+# Syntax Coloring Map For CommunicatoRF
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+CommunicatoRF	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+
+send			KEYWORD2
+
+resetAvailable		KEYWORD2
+getReceivedValue	KEYWORD2
+isAvailable			KEYWORD2
+setAsMaster			KEYWORD2
+setAsSlave			KEYWORD2
+setPins				KEYWORD2
+connectionMgr		KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
