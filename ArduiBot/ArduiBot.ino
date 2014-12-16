@@ -555,7 +555,7 @@ void serialEvent() {
 /* Fonction qui va parser la chaine de caractère "params" (la commande)
  * et mettre les résultats dans les différentes variables temporaires globales
  */
-boolean get_params( String params ){
+boolean get_params_old( String params ){
     // Indicateur de validité des Params
     boolean ok = true;
     
@@ -795,6 +795,15 @@ boolean get_params( String params ){
   
 	return ok;
 } 
+
+
+
+
+
+
+
+
+
 
 /* Fonction qui va donner les ordre suite à la commande receptionnée.
  * retourne la validité de la commande.
