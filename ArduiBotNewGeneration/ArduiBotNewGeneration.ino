@@ -1,25 +1,63 @@
+#include <Servo.h>
 
-const int MAX_PWM = 255;
 
-const int MODE_MOTOR = 1;
-const int MODE_SERVO = 2;
-const int MODE_EXTRA = 3;
-const int MODE_STATE = 4;
+//////////////////////
+// PINS
+// Moteurs Gauche
+#define MG_S1_PIN   	22	// Pin Moteurs Gauche Sens 1
+#define MG_S2_PIN  		23 	// Pin Moteurs Gauche Sens 2
+#define MG_V_PIN   		3 	// Pin Moteurs Gauche Vitesse
+// Moteurs Droite
+#define MD_S1_PIN   	24  // Pin Moteurs Droite Sens 1
+#define MD_S2_PIN   	25 	// Pin Moteurs Droite Sens 2
+#define MD_V_PIN   		4 	// Pin Moteurs Droite Vitesse
 
-const int EXTRA_LIGHT = 1;
+// Servos Tourelle
+#define S_HORI_PIN		10 	// Pin
+#define S_VERT_PIN		11 	// Pin
 
-const int LIGHT_SPOT 	= 1;
-const int LIGHT_LAZER 	= 2;
-const int LIGHT_STROB 	= 3;
+// Lumière(s)
+#define LIGHT_SPOT_PIN	52 	// pin de la lumière pour la caméra
+#define LIGHT_STROB_PIN	53 	// pin de la lumière pour le Stromboscope
+#define LIGHT_LAZER_PIN	7 	// pin de la lumière pour le Lazer
+//////////////////////
 
-const int POS_MAX_HORI = 148;
-const int POS_MAX_VERT = 147;
-const int POS_MIN_HORI = 33;
-const int POS_MIN_VERT = 50;
+//////////////////
+// MODE
+#define MODE_MOTOR 		1
+#define MODE_SERVO 		2
+#define MODE_EXTRA 		3
+#define MODE_STATE 		4
+
+#define EXTRA_LIGHT 	1
+
+#define LIGHT_SPOT  	1
+#define LIGHT_LAZER 	2
+#define LIGHT_STROB 	3
+//////////////////////////
+
+//////////////////////
+// CONTANTES 
+// PWM
+#define MAX_PWM		200		
+#define MIN_PWM		107
+// Valeurs de buttés pour ne pas que les servos forcent
+#define POS_MIN_HORI 		33
+#define POS_MAX_HORI 		148
+#define POS_MIN_VERT 		50
+#define POS_MAX_VERT		147
+///////////////////
+
+
 
 	
+	
+	
+/////////////////
+// MOTEURS
 boolean bInvertX = false;
 boolean bInvertY = false;
+////////////////
 
 ///////////////////////
 // Port Série
@@ -28,6 +66,23 @@ boolean stringComplete = false;	// Indicateur de fin de commande.
 int maxParams = 5;				// nombre de parametres maximum qui peuvent etre receptionné dans une commande
 String delim = ".";				// délimiteur de parametres
 
+///////////////////////
+// Servo Tourelle
+Servo tourH;
+Servo tourV;
+
+////////////////
+// Lights
+int Lights [4] = {0,0,0,0};
+
+
+
+
+
+
+
+
+boolean Debug = true;
 
 
 void setup() {
@@ -35,6 +90,18 @@ void setup() {
 	Serial.begin(/* 115200 */ 9600 );
 	Serial.println( "Ouverture du port serie" );
 
+	tourH.attach( S_HORI_PIN );  	// attache le servo horizontal au pin  
+	tourV.attach( S_VERT_PIN );  	// attache le servo vertical au pin  
+	Serial.println( "Declaration des Servos Tourelle" );
+
+	pinMode( MG_S1_PIN, OUTPUT);
+	pinMode( MG_S2_PIN, OUTPUT);
+	pinMode( MG_V_PIN, OUTPUT);
+	pinMode( MD_S1_PIN, OUTPUT);
+	pinMode( MD_S2_PIN, OUTPUT);
+	pinMode( MD_V_PIN, OUTPUT);
+	Serial.println( "Declaration des Moteurs" );
+	
 	Serial.println( "Ready !" );
 	Serial.println( "" );
 }
@@ -123,9 +190,15 @@ boolean doAction( int iaParams[], int nbParams ){
 		int iDelta = iaParams[2];
 		
 		// vérification des limites
-		iVitesse = normaliseSpeed( iVitesse );
-		iDelta = normaliseDelta( iDelta );
+		iVitesse = normalisePWM( iVitesse );
+		iDelta = normalisePWM( iDelta );
 				
+		// Inversion si necessaire
+		if( bInvertX )
+			iDelta = -iDelta;
+		if( bInvertY )
+			iVitesse = -iVitesse;
+
 		// faire l'action sur les moteurs
 		actionMotors( iVitesse, iDelta );
 		
@@ -160,27 +233,15 @@ boolean doAction( int iaParams[], int nbParams ){
 }
 
 
-int normaliseSpeed(int speed){
-	if( speed > MAX_PWM )
-		speed = MAX_PWM;
-	else if( speed < -MAX_PWM )
-		speed = -MAX_PWM;
-		
-	if( bInvertY )
-		speed = -speed;
-	return speed;
-}
-int normaliseDelta(int delta){
-	if( delta > MAX_PWM*2 )
-		delta = MAX_PWM*2;
-	else if( delta < -MAX_PWM*2 )
-		delta = -MAX_PWM*2;
-		
-	if( bInvertX )
-		delta = -delta;
-	return delta;
-}
 
+int normalisePWM(int pwm){
+	if( pwm > MAX_PWM )
+		pwm = MAX_PWM;
+	else if( pwm < -MAX_PWM )
+		pwm = -MAX_PWM;
+
+	return pwm;
+}
 int normaliseHori(int iPosH){
 	if( iPosH < POS_MIN_HORI )
 		iPosH = POS_MIN_HORI;
@@ -203,25 +264,90 @@ int normaliseVert(int iPosV){
 
 
 void actionMotors( int iVitesse, int iDelta ){
-	Serial.print( "Vitesse : " );
-	Serial.println( iVitesse );
-	Serial.print( "Delta : " );
-	Serial.println( iDelta );
+	if( Debug ){
+		Serial.print( "Vitesse : " );
+		Serial.print( iVitesse );
+		Serial.print( " Delta : " );
+		Serial.println( iDelta );
+	}
+	int iVDroite = 0;		// Indicateur pour la borne de gauche
+	int iVGauche = 0;		// Indicateur pour la borne de droite
+	
+	// Etalonnage des Bornes.
+	iVGauche = iVitesse + iDelta;
+	iVDroite = iVitesse - iDelta;
+	iVGauche = normalisePWM( iVGauche );
+	iVDroite = normalisePWM( iVDroite );
+	
+	// Affectation aux MOTEURS
+	actionMD( iVDroite );
+	actionMG( iVGauche );	
+	
+	if( Debug ){
+		Serial.print( "Vitesse Gauche : " );
+		Serial.print( iVGauche );
+		Serial.print( " Vitesse Droite : " );
+		Serial.println( iVDroite );
+	}
 }
+
+void actionMG( int iVitesse ){
+	if( iVitesse > 0 ){
+		digitalWrite( MG_S1_PIN, MAX_PWM );
+		digitalWrite( MG_S2_PIN, 0 );
+		analogWrite( MG_V_PIN, iVitesse );
+	}else{
+		digitalWrite( MG_S1_PIN, 0 );
+		digitalWrite( MG_S2_PIN, MAX_PWM );
+		analogWrite( MG_V_PIN, -iVitesse );
+
+	}
+}
+void actionMD( int iVitesse ){
+	if( iVitesse > 0 ){
+		digitalWrite( MD_S1_PIN, MAX_PWM );
+		digitalWrite( MD_S2_PIN, 0 );
+		analogWrite( MD_V_PIN, iVitesse );
+	}else{
+		digitalWrite( MD_S1_PIN, 0 );
+		digitalWrite( MD_S2_PIN, MAX_PWM );
+		analogWrite( MD_V_PIN, -iVitesse );
+	}
+}
+
+
+
 
 void actionServos( int iPosH, int iPosV ){
 	Serial.print( "Hori : " );
-	Serial.println( iPosH );
-	Serial.print( "Vert : " );
+	Serial.print( iPosH );
+	Serial.print( " Vert : " );
 	Serial.println( iPosV );
+	
+	tourH.write( iPosH );
+	tourV.write( iPosV );
 }
 
 void actionLights( int iLight, int iValue ){
 	Serial.print( "Light : " );
-	Serial.println( iLight );
-	Serial.print( "iValue : " );
+	Serial.print( iLight );
+	Serial.print( " iValue : " );
 	Serial.println( iValue );
 	
+	switch( iLight ){
+		case LIGHT_SPOT :
+			digitalWrite( LIGHT_SPOT_PIN, (iValue == 0)?LOW:HIGH );
+			break;
+		case LIGHT_STROB :
+			digitalWrite( LIGHT_STROB_PIN, (iValue == 0)?LOW:HIGH );
+			break;
+		case LIGHT_LAZER :
+			digitalWrite( LIGHT_LAZER_PIN, (iValue == 0)?LOW:HIGH );
+			break;
+		default :
+		;
+	}
+	Lights[iLight] = iValue;
 }
 	/**
 	 * Sserial doit etre de la forme :
@@ -243,17 +369,21 @@ void actionFullState(){
 }
 
 void actionStateLight( int iLight ){
+	Serial.print( "[data][light]" );
 	if( iLight == LIGHT_LAZER ){
-		Serial.print( "[data][light][lazer]" );
-		Serial.println( "1" );
+		Serial.print( "[lazer]" );
 	}else if( iLight == LIGHT_SPOT ){
-		Serial.print( "[data][light][spot]" );
-		Serial.println( "1" );
+		Serial.print( "[spot]" );
 	}else if( iLight == LIGHT_STROB ){
-		Serial.print( "[data][light][strob]" );
-		Serial.println( "1" );
+		Serial.print( "[strob]" );
 	}
+	Serial.println( Lights[iLight] );
+
 }
+
+
+
+
 
 
 
