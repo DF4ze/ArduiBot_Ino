@@ -87,7 +87,7 @@ boolean Debug = true;
 
 void setup() {
 	// Port Serie
-	Serial.begin(/* 115200 */ 9600 );
+	Serial.begin( 115200  /*9600 */);
 	Serial.println( "Ouverture du port serie" );
 
 	tourH.attach( S_HORI_PIN );  	// attache le servo horizontal au pin  
