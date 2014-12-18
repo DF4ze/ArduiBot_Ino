@@ -4,13 +4,13 @@
 //////////////////////
 // PINS
 // Moteurs Gauche
-#define MG_S1_PIN   	22	// Pin Moteurs Gauche Sens 1
-#define MG_S2_PIN  		23 	// Pin Moteurs Gauche Sens 2
-#define MG_V_PIN   		3 	// Pin Moteurs Gauche Vitesse
+#define MG_S1_PIN   	24//22	// Pin Moteurs Gauche Sens 1
+#define MG_S2_PIN  		25//23 	// Pin Moteurs Gauche Sens 2
+#define MG_V_PIN   		4//3 	// Pin Moteurs Gauche Vitesse
 // Moteurs Droite
-#define MD_S1_PIN   	24  // Pin Moteurs Droite Sens 1
-#define MD_S2_PIN   	25 	// Pin Moteurs Droite Sens 2
-#define MD_V_PIN   		4 	// Pin Moteurs Droite Vitesse
+#define MD_S1_PIN   	22//24  // Pin Moteurs Droite Sens 1
+#define MD_S2_PIN   	23//25 	// Pin Moteurs Droite Sens 2
+#define MD_V_PIN   		3//4 	// Pin Moteurs Droite Vitesse
 
 // Servos Tourelle
 #define S_HORI_PIN		10 	// Pin
@@ -323,6 +323,9 @@ void actionServos( int iPosH, int iPosV ){
 	Serial.print( iPosH );
 	Serial.print( " Vert : " );
 	Serial.println( iPosV );
+	
+	iPosH = 180 - iPosH;
+	iPosV = 180 - iPosV;
 	
 	tourH.write( iPosH );
 	tourV.write( iPosV );
