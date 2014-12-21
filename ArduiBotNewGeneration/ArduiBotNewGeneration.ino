@@ -66,6 +66,7 @@ boolean stringComplete = false;	// Indicateur de fin de commande.
 int maxParams = 5;				// nombre de parametres maximum qui peuvent etre receptionné dans une commande
 String delim = ".";				// délimiteur de parametres
 
+
 ///////////////////////
 // Servo Tourelle
 Servo tourH;
@@ -82,12 +83,12 @@ int Lights [4] = {0,0,0,0};
 
 
 
-boolean Debug = true;
+boolean Debug = false;
 
 
 void setup() {
 	// Port Serie
-	Serial.begin( 115200  /*9600 */);
+	Serial.begin( 57600/*115200  /*9600 */);
 	Serial.println( "Ouverture du port serie" );
 
 	tourH.attach( S_HORI_PIN );  	// attache le servo horizontal au pin  
@@ -109,11 +110,12 @@ void setup() {
 void loop() {
  	if( stringComplete ){
 		// Pour test : Permet de savoir vraiment ce qui est retenu
- 		Serial.println();
-		Serial.print("-* ");
-		Serial.print(inputString);
-		Serial.println(" *-");
- 		
+		if( Debug ){
+			Serial.println();
+			Serial.print("-* ");
+			Serial.print(inputString);
+			Serial.println(" *-");
+ 		}
 		int iaParams[maxParams];
 		int nbParams;
 		if( parseParams( inputString, maxParams, iaParams, nbParams )){
@@ -122,7 +124,8 @@ void loop() {
 			// Serial.print("nbParams : ");
 			// Serial.println(nbParams);
 			if( !doAction(iaParams, nbParams) )
-				Serial.println( "Erreur de Params" );
+				if( Debug )
+					Serial.println( "Erreur de Params" );
 		}
 		// On réinitialise la chaine:
 		inputString = "";
@@ -319,11 +322,12 @@ void actionMD( int iVitesse ){
 
 
 void actionServos( int iPosH, int iPosV ){
-	Serial.print( "Hori : " );
-	Serial.print( iPosH );
-	Serial.print( " Vert : " );
-	Serial.println( iPosV );
-	
+	if( Debug ){
+		Serial.print( "Hori : " );
+		Serial.print( iPosH );
+		Serial.print( " Vert : " );
+		Serial.println( iPosV );
+	}
 	iPosH = 180 - iPosH;
 	iPosV = 180 - iPosV;
 	
@@ -332,11 +336,12 @@ void actionServos( int iPosH, int iPosV ){
 }
 
 void actionLights( int iLight, int iValue ){
-	Serial.print( "Light : " );
-	Serial.print( iLight );
-	Serial.print( " iValue : " );
-	Serial.println( iValue );
-	
+	if( Debug ){
+		Serial.print( "Light : " );
+		Serial.print( iLight );
+		Serial.print( " iValue : " );
+		Serial.println( iValue );
+	}
 	switch( iLight ){
 		case LIGHT_SPOT :
 			digitalWrite( LIGHT_SPOT_PIN, (iValue == 0)?LOW:HIGH );
