@@ -101,7 +101,11 @@ void setup() {
 	pinMode( MD_S1_PIN, OUTPUT);
 	pinMode( MD_S2_PIN, OUTPUT);
 	pinMode( MD_V_PIN, OUTPUT);
-	Serial.println( "Declaration des Moteurs" );
+	
+	pinMode( LIGHT_SPOT_PIN, OUTPUT);
+	pinMode( LIGHT_LAZER_PIN, OUTPUT);
+	pinMode( LIGHT_STROB_PIN, OUTPUT);
+	Serial.println( "Declaration des PINS" );
 	
 	Serial.println( "Ready !" );
 	Serial.println( "" );
@@ -350,7 +354,7 @@ void actionLights( int iLight, int iValue ){
 			digitalWrite( LIGHT_STROB_PIN, (iValue == 0)?LOW:HIGH );
 			break;
 		case LIGHT_LAZER :
-			digitalWrite( LIGHT_LAZER_PIN, (iValue == 0)?LOW:HIGH );
+			digitalWrite( LIGHT_LAZER_PIN, (iValue == 0)?0:127 );
 			break;
 		default :
 		;
