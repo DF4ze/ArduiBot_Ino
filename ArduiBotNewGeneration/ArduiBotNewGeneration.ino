@@ -27,25 +27,38 @@
 // Ultrason
 #define US_TRIG_PIN		12 	
 #define US_ECHO_PIN		13 	
+
+// Capteur Voltage
+#define VOL_SENOR A0
+
 //////////////////////
 
 //////////////////
 // MODE
+// 1ere cat
 #define MODE_MOTOR 		1
 #define MODE_SERVO 		2
 #define MODE_EXTRA 		3
 #define MODE_STATE 		4
 
+// 2nd cat
 #define EXTRA_LIGHT 	1
+#define EXTRA_BALAI 	2
 
 #define LIGHT_SPOT  	1
 #define LIGHT_LAZER 	2
 #define LIGHT_STROB 	3
+
+#define BALAI_MODE_AVANCE 	1
+#define BALAI_MODE_ARRET 	2
+#define BALAI_MODE_GCH 		3
+#define BALAI_MODE_DRT 		4
+
 //////////////////////////
 
 //////////////////////
 // CONTANTES 
-// PWM
+// PWM pour les moteurs ... normalement 6v mais on les fait monter jusqu'a 9v maxi ;)
 #define MAX_PWM		200		
 #define MIN_PWM		107
 // Valeurs de buttés pour ne pas que les servos forcent
@@ -53,10 +66,14 @@
 #define POS_MAX_HORI 		148
 #define POS_MIN_VERT 		50
 #define POS_MAX_VERT		147
-// Valeur d'angles pour le servo balai
-#define BALAI_POS_MAX		120
-#define BALAI_POS_MIN		60
-#define BALAI_NBSAUT		3 // doit-etre > 1 ... et impair
+// Capteur Voltage
+#define GAIN 50/9.0	//VOL = SIG*GAIN
+#define ADC_REF 5  	//reference voltage of ADC is 5v
+					//Warning:
+					//     If the reference voltage of ADC is 5V, the VOL should be less than 25V;
+					//     If the reference voltage of ADC is 3.3V, the VOL should be less than 18V;
+					//     If the reference voltage of ADC is 2.56V, the VOL should be less than 14V;
+					//     If the reference voltage of ADC is 1.1V, the VOL should be less than 6V;
 
 ///////////////////
 
@@ -67,8 +84,8 @@
 	
 /////////////////
 // MOTEURS
-boolean bInvertX = false;
-boolean bInvertY = false;
+boolean bInvertX = true;   // inverse la direction
+boolean bInvertY = false;  // inverse la vitesse
 ////////////////
 
 ///////////////////////
@@ -91,17 +108,34 @@ int Lights [4] = {0,0,0,0};
 /////////////
 // UltraSon
 unsigned long stampTimeUS = millis();
-unsigned long checkingTimeUS = 1000;
+unsigned long checkingTimeUS = 200; 	// temps entre 2 relevés US // min 40ms
+unsigned long stampTimeScan = millis();
+unsigned long checkingTimeScan = 1000; // temps entre 2 scans complet // sera modifier par le mode
+// Valeur d'angles pour le servo balai
+int posMaxBalai = 120;
+int posMinBalai = 60;
+int nbSautBalai = 3; 					// doit-etre > 1 ... et impair
 // Servo balai
 Servo balai;
 int posBalai = 90;
-bool sensBalai = true; // true sens horaire, false : anti-horaire
-int pasBalai = (BALAI_POS_MAX - BALAI_POS_MIN) / (BALAI_NBSAUT-1);
+bool sensBalai = true; 					// true sens horaire, false : anti-horaire
+int pasBalai = 0;
+bool isBalaiMoving = false; 			// des/active le balayage 
+bool isBalaiScanComplet = false; 		// indique si un scan complet du cone est fini.
+int balaiRunningMode = BALAI_MODE_ARRET;
+
+/////////////
+// Capteur Voltage
+int voltageSamples = 10000;  			// Nombre de samples
+int voltageSamplingNb = 0; 				// incremential number
+unsigned long voltageValuesSum = 0;		// Somme des valeurs
+float voltage;							// Voltage moyen
 
 
 
 
-boolean Debug = false;
+
+boolean isDebug = true;
 
 
 void setup() {
@@ -130,6 +164,7 @@ void setup() {
 	  // Initialisation des pin pour le capteur UltraSon
 	pinMode(US_TRIG_PIN, OUTPUT);
 	pinMode(US_ECHO_PIN, INPUT);
+	modeServoBalai( BALAI_MODE_ARRET );
   
 	Serial.println( "Declaration des PINS" );
 	
@@ -144,12 +179,11 @@ void setup() {
  *
  */
 void loop() {
-	unsigned long runningTime; // temps depuis le dernier checkingTimeUS
 	
 
  	if( stringComplete ){
 		// Pour test : Permet de savoir vraiment ce qui est retenu
-		if( Debug ){
+		if( isDebug ){
 			Serial.println();
 			Serial.print("-* ");
 			Serial.print(inputString);
@@ -163,7 +197,7 @@ void loop() {
 			// Serial.print("nbParams : ");
 			// Serial.println(nbParams);
 			if( !doAction(iaParams, nbParams) )
-				if( Debug )
+				if( isDebug )
 					Serial.println( "Erreur de Params" );
 		}
 		// On réinitialise la chaine:
@@ -172,19 +206,10 @@ void loop() {
 	} 
 	
 	// demande de récupération de la distance si on a dépassé le checkingTimeUS
-	runningTime = millis() - stampTimeUS;
-	if( runningTime > checkingTimeUS ){
-		stampTimeUS = millis();
-		// Serial.print("Distance : ");
-		// Serial.print( getDistanceUS() );
-		// Serial.println("cm");
-		
-		// On affiche la distance
-		actionStateUltraSonic();
-		// On demande au servo de bouger
-		actionServosBalai();
-	}
-	
+	actionUS();
+
+	// traitement du voltage de la batterie
+	actionVoltage();
 }
 
 
@@ -264,6 +289,17 @@ boolean doAction( int iaParams[], int nbParams ){
 		if( bInvertY )
 			iVitesse = -iVitesse;
 
+		// gestion du balayage en fonction de la direction
+		if( iDelta == 0 ){
+			if( iVitesse == 0 )
+				modeServoBalai( BALAI_MODE_ARRET );
+			else
+				modeServoBalai( BALAI_MODE_AVANCE );
+		}else if( iDelta > 0 ){
+			modeServoBalai( BALAI_MODE_DRT );
+		}else 
+			modeServoBalai( BALAI_MODE_GCH );
+			
 		// faire l'action sur les moteurs
 		actionMotors( iVitesse, iDelta );
 		
@@ -279,6 +315,9 @@ boolean doAction( int iaParams[], int nbParams ){
 	}else if( iaParams[0] == MODE_EXTRA && nbParams == 4){ 
 		if( iaParams[1] == EXTRA_LIGHT ){
 			actionLights( iaParams[2], iaParams[3] );
+		}if( iaParams[1] == EXTRA_BALAI ){
+			;
+			//actionBalai( iaParams[2], iaParams[3] );
 		}else
 			ok = false;
 		
@@ -337,7 +376,7 @@ int normaliseVert(int iPosV){
  *
  */
 void actionMotors( int iVitesse, int iDelta ){
-	if( Debug ){
+	if( isDebug ){
 		Serial.print( "Vitesse : " );
 		Serial.print( iVitesse );
 		Serial.print( " Delta : " );
@@ -356,7 +395,7 @@ void actionMotors( int iVitesse, int iDelta ){
 	actionMD( iVDroite );
 	actionMG( iVGauche );	
 	
-	if( Debug ){
+	if( isDebug ){
 		Serial.print( "Vitesse Gauche : " );
 		Serial.print( iVGauche );
 		Serial.print( " Vitesse Droite : " );
@@ -396,7 +435,7 @@ void actionMD( int iVitesse ){
  *
  */
 void actionServosTourelle( int iPosH, int iPosV ){
-	if( Debug ){
+	if( isDebug ){
 		Serial.print( "Hori : " );
 		Serial.print( iPosH );
 		Serial.print( " Vert : " );
@@ -413,21 +452,107 @@ void actionServosBalai( ){
 	int tempPas = ((sensBalai)?1:-1) * pasBalai;
 	
 	// on vérifie si le pas de plus dans le meme sens ne nous fait pas sortir des bornes
-	if( posBalai + tempPas < BALAI_POS_MIN || posBalai + tempPas > BALAI_POS_MAX ){
+	if( posBalai + tempPas < posMinBalai || posBalai + tempPas > posMaxBalai ){
 		// si c le cas, on inverse
 		sensBalai = !sensBalai;
 		tempPas = ((sensBalai)?1:-1) * pasBalai;
 		
 		// si on déborde qd meme : pas = 0
-		tempPas = ( posBalai + tempPas < BALAI_POS_MIN || posBalai + tempPas > BALAI_POS_MAX )?0:tempPas;
+		//tempPas = ( posBalai + tempPas < posMinBalai || posBalai + tempPas > posMaxBalai )?0:tempPas;
+		
+		// si on est qd meme en dehors, peut-etre que l'on vient de changer de mode et que le servo est de l'autre coté...
+		// si on est en dessous de la position Mini on se remet sur la posMinBalai		
+		if( posBalai + tempPas < posMinBalai  )
+			tempPas = posMinBalai - posBalai;
+		// et inversement pour posMaxBalai
+		else if( posBalai + tempPas > posMaxBalai )
+			tempPas = posMaxBalai - posBalai;
+		
+		// sinon si on fait demi-tour c'est que l'on a fini de scaner le cone.
+		else
+			isBalaiScanComplet = true;
 	}
 	
 	// on demande au servo de se mettre en position
 	posBalai += tempPas;
 	balai.write( 180 - posBalai );
-	
-	// si on est sur la valeur exacte, on change de sens
 }
+
+void prepareServoBalai( int posMin, int posMax, int pas, unsigned long freq ){
+	int delta;
+	unsigned long delayPos;
+	
+	posMaxBalai = posMax;
+	posMinBalai = posMin;
+	//nbSautBalai = nbPas;
+	checkingTimeScan = freq;
+	
+	pasBalai = pas;//(posMaxBalai - posMinBalai) / (nbSautBalai-1);
+	
+	// on positionne le balai en début de cone
+	if( abs(posBalai - posMinBalai) > abs( posBalai - posMaxBalai ) ){
+		delta = abs( posBalai - posMinBalai ); // nb de degré pour arriver en position
+		delayPos = (delta * 20)/60; 	// le servo met 20'' pour faire 60°, combien pour le delta?
+		
+		posBalai = posMinBalai;
+		sensBalai = true;
+	}else{
+		delta = abs( posBalai - posMinBalai ); // nb de degré pour arriver en position
+		delayPos = (delta * 20)/60; 	// le servo met 20'' pour faire 60°, combien pour le delta?
+		
+		posBalai = posMaxBalai;
+		sensBalai = false;
+	}
+	
+	// pour forcer le scan au changement de mode
+	stampTimeScan = 4294967295;
+	if( isDebug ){
+		Serial.print("Delay servo balai : ");
+		Serial.print(delayPos);
+		Serial.print(" delta : ");
+		Serial.println(delta);
+	}
+		
+	balai.write( posBalai );
+	delay( delayPos );
+}
+
+void modeServoBalai( int mode ){
+	if( mode != balaiRunningMode ){
+		switch( mode ){
+			case BALAI_MODE_ARRET :
+				balaiRunningMode = BALAI_MODE_ARRET;
+				prepareServoBalai( 0, 180, 30, 10000 ); // a l'arret toute les 10sec on scan le périmètre complet
+				if( isDebug )
+					Serial.println( "BALAI_MODE_ARRET" );
+				break;
+			case BALAI_MODE_AVANCE :
+				balaiRunningMode = BALAI_MODE_AVANCE;
+				prepareServoBalai( 60, 120, 30, 500 ); // en avancant, tt les 500ms on scan un petit périmètre
+				if( isDebug )
+					Serial.println( "BALAI_MODE_AVANCE" );
+				break;
+			case BALAI_MODE_DRT :
+				balaiRunningMode = BALAI_MODE_DRT;
+				prepareServoBalai( 120, 180, 30, 500 );
+				if( isDebug )
+					Serial.println( "BALAI_MODE_DRT" );
+				break;
+			case BALAI_MODE_GCH :
+				balaiRunningMode = BALAI_MODE_GCH;
+				prepareServoBalai( 0, 60, 30, 500 );
+				if( isDebug )
+					Serial.println( "BALAI_MODE_GCH" );
+				break;
+			default:
+				prepareServoBalai( 90, 90, 30, 100000 );
+				if( isDebug )
+					Serial.println( "BALAI_MODE_..... pas de mode" );
+				break;
+		}
+	}
+}
+//actionBalai( iaParams[2], iaParams[3] )
 
 /**
  *
@@ -435,11 +560,11 @@ void actionServosBalai( ){
  *
  */
 void actionLights( int iLight, int iValue ){
-	if( Debug ){
+	if( isDebug ){
 		Serial.print( "Light : " );
 		Serial.print( iLight );
 		Serial.print( " iValue : " );
-		Serial.println( iValue );
+		Serial.println( iValue ); 
 	}
 	switch( iLight ){
 		case LIGHT_SPOT :
@@ -463,6 +588,31 @@ void actionLights( int iLight, int iValue ){
  * Capteur Ultrason
  *
  */
+ 
+void actionUS(){
+	unsigned long runningTimeUS; // temps depuis le dernier checkingTimeUS
+	unsigned long runningTimeScan; // temps depuis le dernier checkingTimeScan
+	
+	runningTimeScan = millis() - stampTimeScan;
+	if( runningTimeScan > checkingTimeScan ){
+		isBalaiScanComplet = false;
+		stampTimeScan = millis();
+	}	
+
+
+	if( !isBalaiScanComplet ){
+		runningTimeUS = millis() - stampTimeUS;
+		if( runningTimeUS > checkingTimeUS ){
+			stampTimeUS = millis();
+			
+			// On affiche la distance
+			actionStateUltraSonic();
+			// On demande au servo de bouger 
+			actionServosBalai();
+		}
+	}
+}
+
 int getDistanceUS(){
 	int duration, distance;
 	
@@ -483,8 +633,32 @@ int getDistanceUS(){
 }
 
 
+/**
+ *
+ * Capteur Voltage
+ *
+ */
+void actionVoltage(){
+	// on récupère la valeur du capteur
+	int sensorValue;  
+	sensorValue=analogRead(VOL_SENOR);
+	// on incrémente
+	voltageSamplingNb ++;
+	voltageValuesSum += sensorValue;
 
+	// si nous avons passé le nombre d'échantillonage
+	if( voltageSamplingNb > voltageSamples ){
+		// on calcule la moyenne
+		sensorValue = voltageValuesSum / voltageSamples; 
+		voltage = GAIN * sensorValue * ADC_REF / 1023.00; // tiré de l'exemple officiel
+		// reset
+		voltageSamplingNb = 0;
+		voltageValuesSum = 0;
+		// affichage
+		actionStateVoltage();
+	}
 
+}
 
 
 
@@ -530,6 +704,11 @@ void actionStateUltraSonic( ){
 	Serial.print( posBalai );
 	Serial.print( "." );
 	Serial.println( getDistanceUS() );
+}
+
+void actionStateVoltage( ){
+	Serial.print( "[data][sensor][voltage]" );
+	Serial.println( voltage );
 }
 
 
