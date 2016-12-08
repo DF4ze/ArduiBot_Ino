@@ -1,7 +1,7 @@
 
 #ifndef ReadSerial_h
 #define ReadSerial_h
-#endif
+
 
 #if defined(ARDUINO) && ARDUINO >= 100
     #include "Arduino.h"
@@ -20,11 +20,15 @@ class ReadSerial{
   public:
     ReadSerial();
 	
-	void setDelim( char aChar );
+	void setDelimCmd( char aChar );
+	void setDelimParams( char aChar );
 	bool putAvailable( char aChar );
 	bool isStringComplete( );
 	String getInputString();
-	void setBuffSize( int iSize );
+	bool parseStringParams( String params, String saParams[], int& nbParams );
+	bool parseFloatParams( String params, float faParams[], int& nbParams );
+	bool parseIntParams( String params, int iaParams[], int& nbParams );
+	int getMaxParams();
 	
 private:	
 	String pullString();
@@ -33,8 +37,11 @@ private:
 	String buffStrings[10];
 	int buffSize;
 	bool stringComplete;
-	char cDelim;
+	char cDelimCmd;
+	char cDelimParams;
 	int iWriteIndex;
+	int maxParams;
 	
 	bool bDebug;
 };
+#endif

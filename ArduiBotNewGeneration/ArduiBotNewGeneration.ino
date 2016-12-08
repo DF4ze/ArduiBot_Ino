@@ -4,12 +4,12 @@
 //////////////////////
 // PINS
 // Moteurs Gauche
-#define MG_S1_PIN   	24//22	// Pin Moteurs Gauche Sens 1
-#define MG_S2_PIN  		25//23 	// Pin Moteurs Gauche Sens 2
+#define MG_S1_PIN   	34//22	// Pin Moteurs Gauche Sens 1
+#define MG_S2_PIN  		32//23 	// Pin Moteurs Gauche Sens 2
 #define MG_V_PIN   		4//3 	// Pin Moteurs Gauche Vitesse
 // Moteurs Droite
-#define MD_S1_PIN   	22//24  // Pin Moteurs Droite Sens 1
-#define MD_S2_PIN   	23//25 	// Pin Moteurs Droite Sens 2
+#define MD_S1_PIN   	30//24  // Pin Moteurs Droite Sens 1
+#define MD_S2_PIN   	28//25 	// Pin Moteurs Droite Sens 2
 #define MD_V_PIN   		3//4 	// Pin Moteurs Droite Vitesse
 
 // Servos Tourelle
@@ -19,10 +19,10 @@
 // Servo balai
 #define S_BALAI_PIN		8 	// Pin
 
-// Lumière(s)
-#define LIGHT_SPOT_PIN	52 	// pin de la lumière pour la caméra
-#define LIGHT_STROB_PIN	53 	// pin de la lumière pour le Stromboscope
-#define LIGHT_LAZER_PIN	7 	// pin de la lumière pour le Lazer
+// Lumiï¿½re(s)
+#define LIGHT_SPOT_PIN	52 	// pin de la lumiï¿½re pour la camï¿½ra
+#define LIGHT_STROB_PIN	53 	// pin de la lumiï¿½re pour le Stromboscope
+#define LIGHT_LAZER_PIN	7 	// pin de la lumiï¿½re pour le Lazer
 
 // Ultrason
 #define US_TRIG_PIN		12 	
@@ -61,7 +61,7 @@
 // PWM pour les moteurs ... normalement 6v mais on les fait monter jusqu'a 9v maxi ;)
 #define MAX_PWM		200		
 #define MIN_PWM		107
-// Valeurs de buttés pour ne pas que les servos forcent
+// Valeurs de buttï¿½s pour ne pas que les servos forcent
 #define POS_MIN_HORI 		33
 #define POS_MAX_HORI 		148
 #define POS_MIN_VERT 		50
@@ -89,11 +89,11 @@ boolean bInvertY = false;  // inverse la vitesse
 ////////////////
 
 ///////////////////////
-// Port Série
-String inputString = "";  		// Détient la chaine de caractère qui est réceptionnée
+// Port Sï¿½rie
+String inputString = "";  		// Dï¿½tient la chaine de caractï¿½re qui est rï¿½ceptionnï¿½e
 boolean stringComplete = false;	// Indicateur de fin de commande.
-int maxParams = 5;				// nombre de parametres maximum qui peuvent etre receptionné dans une commande
-String delim = ".";				// délimiteur de parametres
+int maxParams = 5;				// nombre de parametres maximum qui peuvent etre receptionnï¿½ dans une commande
+String delim = ".";				// dï¿½limiteur de parametres
 
 
 ///////////////////////
@@ -108,7 +108,7 @@ int Lights [4] = {0,0,0,0};
 /////////////
 // UltraSon
 unsigned long stampTimeUS = millis();
-unsigned long checkingTimeUS = 200; 	// temps entre 2 relevés US // min 40ms
+unsigned long checkingTimeUS = 200; 	// temps entre 2 relevï¿½s US // min 40ms
 unsigned long stampTimeScan = millis();
 unsigned long checkingTimeScan = 1000; // temps entre 2 scans complet // sera modifier par le mode
 // Valeur d'angles pour le servo balai
@@ -156,7 +156,7 @@ void setup() {
 	pinMode( MD_S2_PIN, OUTPUT);
 	pinMode( MD_V_PIN, OUTPUT);
 	
-	// Initialisation des pin pour les lumières
+	// Initialisation des pin pour les lumiï¿½res
 	pinMode( LIGHT_SPOT_PIN, OUTPUT);
 	pinMode( LIGHT_LAZER_PIN, OUTPUT);
 	pinMode( LIGHT_STROB_PIN, OUTPUT);
@@ -200,12 +200,12 @@ void loop() {
 				if( isDebug )
 					Serial.println( "Erreur de Params" );
 		}
-		// On réinitialise la chaine:
+		// On rï¿½initialise la chaine:
 		inputString = "";
 		stringComplete = false;
 	} 
 	
-	// demande de récupération de la distance si on a dépassé le checkingTimeUS
+	// demande de rï¿½cupï¿½ration de la distance si on a dï¿½passï¿½ le checkingTimeUS
 	actionUS();
 
 	// traitement du voltage de la batterie
@@ -219,20 +219,20 @@ void loop() {
  *
  */
 void serialEvent() {
-	// Tant que nous avons des données à réceptionner
+	// Tant que nous avons des donnï¿½es ï¿½ rï¿½ceptionner
 	while( Serial.available() && stringComplete == false ){
-		// Récupère un nouvel Octet:
+		// Rï¿½cupï¿½re un nouvel Octet:
 		char inChar = Serial.read();
 		
-		// Si le caractère réceptionné est *
-		// La boucle principale va pouvoir s'occuper du résultat.
+		// Si le caractï¿½re rï¿½ceptionnï¿½ est *
+		// La boucle principale va pouvoir s'occuper du rï¿½sultat.
 		if( inChar == '*' ){
 			stringComplete = true;
 		}else
-			// Sinon, on concatène l'octet à "inputString" ... si on n'est pas en mode stringComplete ... 
-			// ca évite l'empilage de parametres qd ils arrivent trop rapidement..
+			// Sinon, on concatï¿½ne l'octet ï¿½ "inputString" ... si on n'est pas en mode stringComplete ... 
+			// ca ï¿½vite l'empilage de parametres qd ils arrivent trop rapidement..
 			if( !stringComplete )
-				if(inChar >= 32) // Ne concatène que des caractère imprimable.
+				if(inChar >= 32) // Ne concatï¿½ne que des caractï¿½re imprimable.
 					inputString += inChar;
 	}
 
@@ -246,12 +246,12 @@ void serialEvent() {
  *
  */
 boolean parseParams( String params, int maxParams, int iaParams[], int& nbParams ){
-    // Indicateur de validité des Params
+    // Indicateur de validitï¿½ des Params
     boolean ok = true;
 
 	String saParams[ maxParams ];
 	
-	// On cherche les délimiteurs
+	// On cherche les dï¿½limiteurs
 	nbParams = 0;
 	int oldpos = 0;
 	int newpos = params.indexOf( delim );
@@ -261,7 +261,7 @@ boolean parseParams( String params, int maxParams, int iaParams[], int& nbParams
 		newpos = params.indexOf( delim, oldpos );
 		nbParams++;
 	}while( newpos > -1 && nbParams < maxParams );
-	// ne pas oublier le dernier param qui n'a pas de délimiteur ;)
+	// ne pas oublier le dernier param qui n'a pas de dï¿½limiteur ;)
 	saParams[nbParams] = params.substring( oldpos, params.length() );
 	nbParams++;
 	
@@ -279,7 +279,7 @@ boolean doAction( int iaParams[], int nbParams ){
 		int iVitesse = iaParams[1];
 		int iDelta = iaParams[2];
 		
-		// vérification des limites
+		// vï¿½rification des limites
 		iVitesse = normalisePWM( iVitesse );
 		iDelta = normalisePWM( iDelta );
 				
@@ -339,7 +339,7 @@ boolean doAction( int iaParams[], int nbParams ){
 
 /**
  *
- * Fonction de vérification des données entrées
+ * Fonction de vï¿½rification des donnï¿½es entrï¿½es
  *
  */
 int normalisePWM(int pwm){
@@ -451,16 +451,16 @@ void actionServosTourelle( int iPosH, int iPosV ){
 void actionServosBalai( ){
 	int tempPas = ((sensBalai)?1:-1) * pasBalai;
 	
-	// on vérifie si le pas de plus dans le meme sens ne nous fait pas sortir des bornes
+	// on vï¿½rifie si le pas de plus dans le meme sens ne nous fait pas sortir des bornes
 	if( posBalai + tempPas < posMinBalai || posBalai + tempPas > posMaxBalai ){
 		// si c le cas, on inverse
 		sensBalai = !sensBalai;
 		tempPas = ((sensBalai)?1:-1) * pasBalai;
 		
-		// si on déborde qd meme : pas = 0
+		// si on dï¿½borde qd meme : pas = 0
 		//tempPas = ( posBalai + tempPas < posMinBalai || posBalai + tempPas > posMaxBalai )?0:tempPas;
 		
-		// si on est qd meme en dehors, peut-etre que l'on vient de changer de mode et que le servo est de l'autre coté...
+		// si on est qd meme en dehors, peut-etre que l'on vient de changer de mode et que le servo est de l'autre cotï¿½...
 		// si on est en dessous de la position Mini on se remet sur la posMinBalai		
 		if( posBalai + tempPas < posMinBalai  )
 			tempPas = posMinBalai - posBalai;
@@ -489,16 +489,16 @@ void prepareServoBalai( int posMin, int posMax, int pas, unsigned long freq ){
 	
 	pasBalai = pas;//(posMaxBalai - posMinBalai) / (nbSautBalai-1);
 	
-	// on positionne le balai en début de cone
+	// on positionne le balai en dï¿½but de cone
 	if( abs(posBalai - posMinBalai) > abs( posBalai - posMaxBalai ) ){
-		delta = abs( posBalai - posMinBalai ); // nb de degré pour arriver en position
-		delayPos = (delta * 20)/60; 	// le servo met 20'' pour faire 60°, combien pour le delta?
+		delta = abs( posBalai - posMinBalai ); // nb de degrï¿½ pour arriver en position
+		delayPos = (delta * 20)/60; 	// le servo met 20'' pour faire 60ï¿½, combien pour le delta?
 		
 		posBalai = posMinBalai;
 		sensBalai = true;
 	}else{
-		delta = abs( posBalai - posMinBalai ); // nb de degré pour arriver en position
-		delayPos = (delta * 20)/60; 	// le servo met 20'' pour faire 60°, combien pour le delta?
+		delta = abs( posBalai - posMinBalai ); // nb de degrï¿½ pour arriver en position
+		delayPos = (delta * 20)/60; 	// le servo met 20'' pour faire 60ï¿½, combien pour le delta?
 		
 		posBalai = posMaxBalai;
 		sensBalai = false;
@@ -522,13 +522,13 @@ void modeServoBalai( int mode ){
 		switch( mode ){
 			case BALAI_MODE_ARRET :
 				balaiRunningMode = BALAI_MODE_ARRET;
-				prepareServoBalai( 0, 180, 30, 10000 ); // a l'arret toute les 10sec on scan le périmètre complet
+				prepareServoBalai( 0, 180, 30, 10000 ); // a l'arret toute les 10sec on scan le pï¿½rimï¿½tre complet
 				if( isDebug )
 					Serial.println( "BALAI_MODE_ARRET" );
 				break;
 			case BALAI_MODE_AVANCE :
 				balaiRunningMode = BALAI_MODE_AVANCE;
-				prepareServoBalai( 60, 120, 30, 500 ); // en avancant, tt les 500ms on scan un petit périmètre
+				prepareServoBalai( 60, 120, 30, 500 ); // en avancant, tt les 500ms on scan un petit pï¿½rimï¿½tre
 				if( isDebug )
 					Serial.println( "BALAI_MODE_AVANCE" );
 				break;
@@ -556,7 +556,7 @@ void modeServoBalai( int mode ){
 
 /**
  *
- * Actions sur les lumières
+ * Actions sur les lumiï¿½res
  *
  */
 void actionLights( int iLight, int iValue ){
@@ -620,8 +620,8 @@ int getDistanceUS(){
 	digitalWrite(US_TRIG_PIN, HIGH);
 	delayMicroseconds(1000);
 	digitalWrite(US_TRIG_PIN, LOW);
-	// Mesure du temps : allé/retour de l'ultrason
-	duration = pulseIn(US_ECHO_PIN, HIGH, 12000); // l'ultrason ne peut mesuré précisément que jusqu'a 4-5m, je mets un timeout pour 10m
+	// Mesure du temps : allï¿½/retour de l'ultrason
+	duration = pulseIn(US_ECHO_PIN, HIGH, 12000); // l'ultrason ne peut mesurï¿½ prï¿½cisï¿½ment que jusqu'a 4-5m, je mets un timeout pour 10m
 	// conversion en distance.
 	distance = (duration/2) * 0.03495;
 	
@@ -639,18 +639,18 @@ int getDistanceUS(){
  *
  */
 void actionVoltage(){
-	// on récupère la valeur du capteur
+	// on rï¿½cupï¿½re la valeur du capteur
 	int sensorValue;  
 	sensorValue=analogRead(VOL_SENOR);
-	// on incrémente
+	// on incrï¿½mente
 	voltageSamplingNb ++;
 	voltageValuesSum += sensorValue;
 
-	// si nous avons passé le nombre d'échantillonage
+	// si nous avons passï¿½ le nombre d'ï¿½chantillonage
 	if( voltageSamplingNb > voltageSamples ){
 		// on calcule la moyenne
 		sensorValue = voltageValuesSum / voltageSamples; 
-		voltage = GAIN * sensorValue * ADC_REF / 1023.00; // tiré de l'exemple officiel
+		voltage = GAIN * sensorValue * ADC_REF / 1023.00; // tirï¿½ de l'exemple officiel
 		// reset
 		voltageSamplingNb = 0;
 		voltageValuesSum = 0;
@@ -664,7 +664,7 @@ void actionVoltage(){
 
 /**
  *
- * Retour d'états
+ * Retour d'ï¿½tats
  *
  */
 	/**
